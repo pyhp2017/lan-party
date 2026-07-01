@@ -1,6 +1,8 @@
 package client
 
 import (
+	"cmp"
+	"slices"
 	"testing"
 )
 
@@ -40,11 +42,17 @@ func TestParsePeers(t *testing.T) {
 	if peers[0].HostName != "myhost" || !peers[0].Online {
 		t.Errorf("unexpected self: %+v", peers[0])
 	}
-	if peers[1].HostName != "alice" || !peers[1].Online {
-		t.Errorf("unexpected peer 1: %+v", peers[1])
+
+	rest := peers[1:]
+	slices.SortFunc(rest, func(a, b Peer) int {
+		return cmp.Compare(a.HostName, b.HostName)
+	})
+
+	if rest[0].HostName != "alice" || !rest[0].Online || rest[0].OS != "windows" {
+		t.Errorf("unexpected alice: %+v", rest[0])
 	}
-	if peers[2].HostName != "bob" || peers[2].Online {
-		t.Errorf("unexpected peer 2: %+v", peers[2])
+	if rest[1].HostName != "bob" || rest[1].Online || rest[1].OS != "linux" {
+		t.Errorf("unexpected bob: %+v", rest[1])
 	}
 }
 

@@ -10,14 +10,12 @@ jobs:
   build-and-test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
           go-version: "1.26"
-
-      - name: Download dependencies
-        run: go mod download
+          cache: false
 
       - name: Vet
         run: go vet ./...
@@ -35,14 +33,14 @@ jobs:
         run: GOOS=windows GOARCH=amd64 go build -o /tmp/lan-party-windows-amd64.exe ./cmd/lan-party
 
       - name: Lint
-        uses: golangci/golangci-lint-action@v6
+        uses: golangci/golangci-lint-action@v7
         with:
           version: latest
 
   terraform-validate:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - uses: hashicorp/setup-terraform@v3
         with:

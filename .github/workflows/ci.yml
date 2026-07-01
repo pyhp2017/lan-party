@@ -1,0 +1,58 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26"
+
+      - name: Download dependencies
+        run: go mod download
+
+      - name: Vet
+        run: go vet ./...
+
+      - name: Test
+        run: go test -race -count=1 ./...
+
+      - name: Build server
+        run: go build -o /tmp/lanpartyd ./cmd/lanpartyd
+
+      - name: Build client (linux)
+        run: GOOS=linux GOARCH=amd64 go build -o /tmp/lan-party-linux-amd64 ./cmd/lan-party
+
+      - name: Build client (windows)
+        run: GOOS=windows GOARCH=amd64 go build -o /tmp/lan-party-windows-amd64.exe ./cmd/lan-party
+
+      - name: Lint
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: latest
+
+  terraform-validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.10.0"
+
+      - name: Terraform fmt check
+        run: terraform -chdir=deploy/terraform fmt -check -recursive
+
+      - name: Terraform init
+        run: terraform -chdir=deploy/terraform init -backend=false
+
+      - name: Terraform validate
+        run: terraform -chdir=deploy/terraform validate

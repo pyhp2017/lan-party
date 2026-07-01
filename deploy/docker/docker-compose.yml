@@ -1,0 +1,59 @@
+services:
+  headscale:
+    image: headscale/headscale:v0.29.1
+    container_name: headscale
+    restart: unless-stopped
+    command: headscale serve
+    volumes:
+      - ./headscale/config.yaml:/etc/headscale/config.yaml:ro
+      - headscale-data:/var/lib/headscale
+    ports:
+      - "3478:3478/udp"
+    networks:
+      - lanparty
+    expose:
+      - "8080"
+      - "9090"
+      - "50443"
+
+  lanpartyd:
+    build:
+      context: ../..
+      dockerfile: deploy/docker/lanpartyd/Dockerfile
+    container_name: lanpartyd
+    restart: unless-stopped
+    depends_on:
+      - headscale
+    environment:
+      - LANPARTYD_LISTEN_ADDR=0.0.0.0:8090
+      - HEADSCALE_URL=http://headscale:8080
+      - HEADSCALE_API_KEY=${HEADSCALE_API_KEY}
+    networks:
+      - lanparty
+    expose:
+      - "8090"
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: caddy
+    restart: unless-stopped
+    depends_on:
+      - headscale
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    networks:
+      - lanparty
+
+volumes:
+  headscale-data:
+  caddy-data:
+  caddy-config:
+
+networks:
+  lanparty:
+    driver: bridge

@@ -1,0 +1,27 @@
+bin/
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Terraform
+deploy/terraform/.terraform/
+deploy/terraform/*.tfstate
+deploy/terraform/*.tfstate.*
+deploy/terraform/*.tfvars
+
+# Environment / secrets
+*.env
+.env
+deploy/docker/headscale/noise_private.key
+deploy/docker/headscale/derp_server_private.key
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db

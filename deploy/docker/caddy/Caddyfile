@@ -1,0 +1,32 @@
+{
+	# Replace lanparty.example.com with your domain.
+	# DNS A record must point to your VPS public IP.
+
+	lanparty.example.com {
+		# Headscale control plane + embedded DERP relay
+		@api route /api/* {
+			reverse_proxy headscale:8080
+		}
+
+		# Headscale noise/key endpoints
+		@hs route /key /health /version /derp* /bootstrap-dns /register* /windows {
+			reverse_proxy headscale:8080
+		}
+
+		# lanpartyd control API
+		@lp route /parties* {
+			reverse_proxy lanpartyd:8090
+		}
+
+		# Default: proxy to Headscale (catches /machine, /ts2021, etc.)
+		reverse_proxy headscale:8080
+
+		header_up X-Real-IP {remote_host}
+		header_up X-Forwarded-For {remote_host}
+
+		log {
+			output stdout
+			format console
+		}
+	}
+}

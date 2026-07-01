@@ -1,0 +1,128 @@
+#cloud-config
+packages:
+  - docker.io
+  - docker-compose-v2
+  - git
+  - curl
+
+write_files:
+  - path: /opt/lanparty/docker-compose.yml
+    content: |
+      services:
+        headscale:
+          image: headscale/headscale:v0.29.1
+          container_name: headscale
+          restart: unless-stopped
+          command: headscale serve
+          volumes:
+            - ./headscale/config.yaml:/etc/headscale/config.yaml:ro
+            - headscale-data:/var/lib/headscale
+          ports:
+            - "3478:3478/udp"
+          networks:
+            - lanparty
+          expose:
+            - "8080"
+            - "9090"
+
+        caddy:
+          image: caddy:2-alpine
+          container_name: caddy
+          restart: unless-stopped
+          depends_on:
+            - headscale
+          ports:
+            - "80:80"
+            - "443:443"
+          volumes:
+            - ./Caddyfile:/etc/caddy/Caddyfile:ro
+            - caddy-data:/data
+            - caddy-config:/config
+          networks:
+            - lanparty
+
+      volumes:
+        headscale-data:
+        caddy-data:
+        caddy-config:
+
+      networks:
+        lanparty:
+          driver: bridge
+
+  - path: /opt/lanparty/Caddyfile
+    content: |
+      ${domain} {
+        reverse_proxy headscale:8080
+        header_up X-Real-IP {remote_host}
+        log {
+          output stdout
+          format console
+        }
+      }
+
+  - path: /opt/lanparty/headscale/config.yaml
+    content: |
+      server_url: https://${domain}
+      listen_addr: 0.0.0.0:8080
+      metrics_listen_addr: 0.0.0.0:9090
+      grpc_listen_addr: 0.0.0.0:50443
+      grpc_allow_insecure: false
+      trusted_proxies: []
+      noise:
+        private_key_path: /var/lib/headscale/noise_private.key
+      prefixes:
+        v4: 100.64.0.0/24
+        v6: fd7a:115c:a1e0::/48
+        allocation: sequential
+      derp:
+        server:
+          enabled: true
+          region_id: 999
+          region_code: "headscale"
+          region_name: "Headscale Embedded DERP"
+          verify_clients: true
+          stun_listen_addr: "0.0.0.0:3478"
+          private_key_path: /var/lib/headscale/derp_server_private.key
+          automatically_add_embedded_derp_region: true
+        urls: []
+        paths: []
+        auto_update_enabled: true
+      disable_check_updates: false
+      database:
+        type: sqlite
+        sqlite:
+          path: /var/lib/headscale/db.sqlite
+          write_ahead_log: true
+      log:
+        level: info
+        format: text
+      policy:
+        mode: file
+        path: ""
+      dns:
+        magic_dns: true
+        base_domain: lanparty.local
+        override_local_dns: true
+        nameservers:
+          global:
+            - 1.1.1.1
+            - 1.0.0.1
+      unix_socket: /var/run/headscale/headscale.sock
+      unix_socket_permission: "0770"
+
+runcmd:
+  - systemctl enable --now docker
+  - cd /opt/lanparty && docker compose up -d
+  - |
+    echo "=== SETUP INSTRUCTIONS ==="
+    echo "1. Create a DNS A record for ${domain} pointing to this server's IP"
+    echo "2. Wait for DNS to propagate, then Caddy will auto-issue TLS"
+    echo "3. Generate a Headscale API key:"
+    echo "   docker exec headscale headscale apikeys create"
+    echo "4. Clone the lan-party repo and start lanpartyd:"
+    echo "   git clone https://github.com/ffa/lan-party.git /opt/lan-party"
+    echo "   cd /opt/lan-party"
+    echo "   export HEADSCALE_API_KEY='<key-from-step-3>'"
+    echo "   export HEADSCALE_URL='http://headscale:8080'"
+    echo "   docker compose -f deploy/docker/docker-compose.yml up -d lanpartyd"

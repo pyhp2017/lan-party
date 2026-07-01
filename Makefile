@@ -1,4 +1,4 @@
-.PHONY: build build-client build-server test integration-test lint vet fmt cross-compile docker-up docker-down terraform-init terraform-apply terraform-destroy clean
+.PHONY: build build-client build-server test integration-test lint vet fmt cross-compile release docker-up docker-down terraform-init terraform-apply terraform-destroy clean
 
 BINARY_CLIENT = lan-party
 BINARY_SERVER = lanpartyd
@@ -34,6 +34,14 @@ cross-compile:
 	GOOS=linux   GOARCH=amd64 go build -ldflags "$(LDFLAGS)" -o $(BUILD_DIR)/$(BINARY_CLIENT)-linux-amd64   ./cmd/lan-party
 	GOOS=windows GOARCH=amd64 go build -ldflags "$(LDFLAGS)" -o $(BUILD_DIR)/$(BINARY_CLIENT)-windows-amd64.exe ./cmd/lan-party
 	GOOS=linux   GOARCH=amd64 go build -ldflags "$(LDFLAGS)" -o $(BUILD_DIR)/$(BINARY_SERVER)-linux-amd64   ./cmd/lanpartyd
+
+release: cross-compile
+	@echo "To create a release:"
+	@echo "  git tag v0.1.0"
+	@echo "  git push origin v0.1.0"
+	@echo ""
+	@echo "The Release workflow will build and publish binaries automatically."
+
 
 docker-up:
 	docker compose -f deploy/docker/docker-compose.yml up -d

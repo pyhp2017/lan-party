@@ -126,6 +126,23 @@ make test           # unit tests
 make lint           # golangci-lint
 ```
 
+## Releases
+
+Binaries are built and published automatically when a tag is pushed:
+
+```bash
+git tag v0.1.0
+git push origin v0.1.0
+```
+
+This triggers the Release workflow, which cross-compiles and publishes:
+- `lan-party-vX.Y.Z-linux-amd64.tar.gz` — player CLI (Linux)
+- `lan-party-vX.Y.Z-windows-amd64.zip` — player CLI (Windows)
+- `lanpartyd-vX.Y.Z-linux-amd64.tar.gz` — server (Linux VPS)
+- `checksums.txt` — SHA256 sums
+
+Download the latest release from the [Releases page](../../releases).
+
 ## Ports
 
 | Port | Protocol | Purpose |
@@ -141,7 +158,7 @@ make lint           # golangci-lint
 - **Caddy** — reverse proxy + automatic Let's Encrypt TLS
 - **Terraform** — Hetzner Cloud VPS provisioning
 - **Docker Compose** — server deployment
-- **GitHub Actions** — CI + cross-compile
+- **GitHub Actions** — CI + release automation
 
 ## Project structure
 
@@ -154,5 +171,5 @@ internal/client/      Tailscale wrapper (detect, up/down, peers)
 internal/party/       Domain types
 deploy/docker/        docker-compose + Headscale config + Caddyfile
 deploy/terraform/     Hetzner VPS + cloud-init
-.github/workflows/    CI
+.github/workflows/    CI + release workflows
 ```

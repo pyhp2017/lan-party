@@ -1,0 +1,59 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version: "1.26"
+          cache: false
+
+      - name: Build and package binaries
+        run: |
+          VERSION=${GITHUB_REF_NAME#v}
+          LDFLAGS="-X github.com/ffa/lan-party/internal/version.Version=${GITHUB_REF_NAME}"
+          mkdir -p dist
+
+          # lan-party CLI — Linux
+          GOOS=linux GOARCH=amd64 go build -ldflags "${LDFLAGS}" -o dist/lan-party ./cmd/lan-party
+          tar czf dist/lan-party-${VERSION}-linux-amd64.tar.gz -C dist lan-party
+          rm dist/lan-party
+
+          # lan-party CLI — Windows
+          GOOS=windows GOARCH=amd64 go build -ldflags "${LDFLAGS}" -o dist/lan-party.exe ./cmd/lan-party
+          (cd dist && zip -r lan-party-${VERSION}-windows-amd64.zip lan-party.exe)
+          rm dist/lan-party.exe
+
+          # lanpartyd server — Linux (VPS)
+          GOOS=linux GOARCH=amd64 go build -ldflags "${LDFLAGS}" -o dist/lanpartyd ./cmd/lanpartyd
+          tar czf dist/lanpartyd-${VERSION}-linux-amd64.tar.gz -C dist lanpartyd
+          rm dist/lanpartyd
+
+      - name: Generate checksums
+        run: |
+          cd dist
+          sha256sum *.tar.gz *.zip > checksums.txt
+
+      - name: Create GitHub release
+        run: |
+          VERSION=${GITHUB_REF_NAME#v}
+          gh release create "${GITHUB_REF_NAME}" \
+            --title "${GITHUB_REF_NAME}" \
+            --generate-notes \
+            dist/lan-party-${VERSION}-linux-amd64.tar.gz \
+            dist/lan-party-${VERSION}-windows-amd64.zip \
+            dist/lanpartyd-${VERSION}-linux-amd64.tar.gz \
+            dist/checksums.txt
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
